@@ -1,0 +1,12 @@
+{
+    "name": "OurDefectsByCloser",
+    "className": "CustomApp",
+    "server": "https://test1cluster.rallydev.com",
+    "sdk": "x",
+    "javascript": [
+        "App.js"
+    ],
+    "css": [
+        "app.css"
+    ]
+}

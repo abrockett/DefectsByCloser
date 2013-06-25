@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OurDefectsByCloser</title>
+
+    <script type="text/javascript" src="/apps/x/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function () {
+                Ext.define("CustomApp",{extend:"Rally.app.App",componentCls:"app",items:[{xtype:"container",itemId:"releaseFilter"},{xtype:"container",itemId:"grid"}],launch:function(){this.down("#releaseFilter").add({xtype:"rallyreleasecombobox",itemId:"releaseComboBox",fieldLabel:"Select Release: ",width:310,labelWidth:100,storeConfig:{listeners:{load:this._onReleaseComboboxLoad,scope:this}},listeners:{select:this._onSelect,scope:this}})},_onReleaseComboboxLoad:function(comboBox){this.releaseComboBox=this.down("#releaseComboBox"),Ext.create("Rally.data.WsapiDataStore",{model:"Defect",autoLoad:!0,fetch:["FormattedID","Name","Owner","DisplayName","UserName"],filters:[this.releaseComboBox.getQueryFromSelected()],sorters:[{property:"FormattedID",direction:"ASC"}],listeners:{load:this._onDefectDataLoaded,scope:this}})},_onDefectDataLoaded:function(store,data){var me=this;this._defectRecords=[],0===data.length&&this._onDefectDataBuilt([],0),Ext.Array.each(data,function(defect){this._defectRecords.push({FormattedID:defect.get("FormattedID"),Name:defect.get("Name"),Owner:defect.get("Owner").DisplayName,RevisionNumber:me._getRevisionHistory(defect)})},this)},_getRevisionHistory:function(defect){var me=this,count;return this._revisionModel=Rally.data.ModelFactory.getModel({type:"RevisionHistory",scope:this,success:function(model){model.load(Rally.util.Ref.getOidFromRef(this._currentRecord.get("RevisionHistory")),{scope:this,success:function(record,operation){console.log("count received"),count=record.get("Revisions").Count}})}}),count},_onSelect:function(){var filterConfig={property:"Release",operator:"=",value:this.down("#releaseComboBox").getValue()};this.grid.filter(filterConfig,!0,!0)}});
+
+            Rally.launchApp('CustomApp', {
+                name:"OurDefectsByCloser",
+	            parentRepos:""
+            });
+
+        });
+    </script>
+
+
+    <style type="text/css">
+        .app {
+     margin: 10px;
+}
+.app .cardboard {
+	border: 2px solid green;
+}
+    </style>
+</head>
+<body></body>
+</html>
