@@ -102,7 +102,6 @@ Ext.define('CustomApp', {
                                                 Ext.Array.each(this._customRecords, function(customDefect) {
                                                     if (customDefect && (customDefect.RevisionID === record.internalId)) {
                                                         Ext.Array.remove(this._customRecords, customDefect);
-                                                        console.log('removed non-closed record: ' + customDefect.FormattedID);
                                                     }
                                                 }, this);
                                             }
@@ -159,14 +158,11 @@ Ext.define('CustomApp', {
 
     _onButtonPressed: function() {
         var title = this.down('#releaseComboBox').getRawValue(),
-            options;
+            options = "toolbar=1,menubar=1,scrollbars=yes,scrolling=yes,resizable=yes,width=1000,height=500";
 
         // code to get the style that we added in the app.css file
         var css = document.getElementsByTagName('style')[0].innerHTML;
 
-
-        
-        options = "toolbar=1,menubar=1,scrollbars=yes,scrolling=yes,resizable=yes,width=1000,height=500";
         var printWindow = window.open('', '', options);
 
         var doc = printWindow.document;
