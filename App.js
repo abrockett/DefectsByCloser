@@ -87,44 +87,27 @@ Ext.define('CustomApp', {
                                     fetch: true,
                                     scope: this,
                                     callback: function(revisions, operation, success) {
-                                        //debugger;
                                         Ext.Array.each(revisions, function(revision, revisionIndex) {
-                                            //debugger;
                                             if (revision.data.Description.search("CLOSED DATE added") !== -1) {
-                                                console.log('revision hit');
                                                 Ext.Array.each(this._customRecords, function(customDefect) {
-                                                    //debugger;
                                                     if (customDefect.RevisionID === record.internalId) {
                                                         customDefect.RevisionNumber = revision.get('RevisionNumber');
                                                         customDefect.DateClosed = revision.get('CreationDate');
                                                         customDefect.ClosedBy = revision.get('User')._refObjectName;
-                                                        //debugger;
-                                                        //console.log('data loaded: ', defect, record);
                                                         return false;
-
                                                     }
                                                 }, this);
                                                 return false;
-                                            } else {
-                                                if (revisionIndex === (revisions.length-1) ) {
-                                                    Ext.Array.each(this._customRecords, function(customDefect) {
-                                                        console.log('revision hit');
-                                                        //debugger;
-                                                        if (customDefect.RevisionID === record.internalId) {
-                                                            customDefect.RevisionNumber = revision.get('RevisionNumber');
-                                                            customDefect.DateClosed = revision.get('CreationDate');
-                                                            customDefect.ClosedBy = revision.get('User')._refObjectName;
-                                                            //debugger;
-                                                            //console.log('data loaded: ', defect, record);
-                                                            return false;
-
-                                                        }
-                                                    }, this);
-                                                }
+                                            } else if (revisionIndex === (revisions.length-1)) {
+                                                Ext.Array.each(this._customRecords, function(customDefect) {
+                                                    if (customDefect && (customDefect.RevisionID === record.internalId)) {
+                                                        Ext.Array.remove(this._customRecords, customDefect);
+                                                        console.log('removed non-closed record: ' + customDefect.FormattedID);
+                                                    }
+                                                }, this);
                                             }
-                                            //console.log('building grid!');
-                                            this._buildGrid();
                                         }, this);
+                                        this._buildGrid();
                                     }
                                 }); 
                             }
@@ -149,7 +132,6 @@ Ext.define('CustomApp', {
             this.grid = this.down('#grid').add({
                 xtype: 'rallygrid',
                 store: customStore,
-                sortableColumns: false,
                 showPagingToolbar: false,
                 columnCfgs: [
                     {text: 'Formatted ID', dataIndex: 'FormattedID', flex: 1, xtype: 'templatecolumn', 
@@ -163,5 +145,80 @@ Ext.define('CustomApp', {
         } else {
             this.grid.reconfigure(customStore);
         }
+    },
+
+    getOptions: function() {
+        return [
+            {
+                text: 'Print',
+                handler: this._onButtonPressed,
+                scope: this
+            }
+        ];
+    },
+
+    _onButtonPressed: function() {
+        var title = this.down('#releaseComboBox').getRawValue(),
+            options;
+
+        // code to get the style that we added in the app.css file
+        var css = document.getElementsByTagName('style')[0].innerHTML;
+
+
+        
+        options = "toolbar=1,menubar=1,scrollbars=yes,scrolling=yes,resizable=yes,width=1000,height=500";
+        var printWindow = window.open('', '', options);
+
+        var doc = printWindow.document;
+
+
+        var grid = this.down('#grid');
+
+        doc.write('<html><head>' + '<style>' + css + '</style><title>' + title + '</title>');
+
+
+        doc.write('</head><body class="landscape">');
+        doc.write('<p>Release: ' + title + '</p><br />');
+        doc.write(grid.getEl().dom.innerHTML);
+        doc.write('</body></html>');
+        doc.close();
+
+        this._injectCSS(printWindow);
+
+        printWindow.print();
+
+    },
+
+    _injectContent: function(html, elementType, attributes, container, printWindow){
+        elementType = elementType || 'div';
+        container = container || printWindow.document.getElementsByTagName('body')[0];
+
+        var element = printWindow.document.createElement(elementType);
+
+        Ext.Object.each(attributes, function(key, value){
+            if (key === 'class') {
+                element.className = value;
+            } else {
+                element.setAttribute(key, value);
+            }
+        });
+
+        if(html){
+            element.innerHTML = html;
+        }
+
+        return container.appendChild(element);
+    },
+
+    _injectCSS: function(printWindow){
+        //find all the stylesheets on the current page and inject them into the new page
+        Ext.each(Ext.query('link'), function(stylesheet){
+                this._injectContent('', 'link', {
+                rel: 'stylesheet',
+                href: stylesheet.href,
+                type: 'text/css'
+            }, printWindow.document.getElementsByTagName('head')[0], printWindow);
+        }, this);
+
     }
 });
