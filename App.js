@@ -79,46 +79,54 @@ Ext.define('CustomApp', {
                 this._revisionModel = Rally.data.ModelFactory.getModel({
                     type: 'RevisionHistory',
                     scope: this,
-                    success: function(model) {
-                        model.load(Rally.util.Ref.getOidFromRef(this._currentDefectList[this._defectIndex].get('RevisionHistory')),{
-                            scope: this,
-                            success: function(record, operation) {
-                                record.getCollection('Revisions').load({
-                                    fetch: true,
-                                    scope: this,
-                                    callback: function(revisions, operation, success) {
-                                        Ext.Array.each(revisions, function(revision, revisionIndex) {
-                                            if (revision.data.Description.search("CLOSED DATE added") !== -1) {
-                                                Ext.Array.each(this._customRecords, function(customDefect) {
-                                                    if (customDefect.RevisionID === record.internalId) {
-                                                        customDefect.RevisionNumber = revision.get('RevisionNumber');
-                                                        customDefect.DateClosed = revision.get('CreationDate');
-                                                        customDefect.ClosedBy = revision.get('User')._refObjectName;
-                                                        return false;
-                                                    }
-                                                }, this);
-                                                return false;
-                                            } else if (revisionIndex === (revisions.length-1)) {
-                                                Ext.Array.each(this._customRecords, function(customDefect) {
-                                                    if (customDefect && (customDefect.RevisionID === record.internalId)) {
-                                                        Ext.Array.remove(this._customRecords, customDefect);
-                                                    }
-                                                }, this);
-                                            }
-                                        }, this);
-                                        this._buildGrid();
-                                    }
-                                }); 
-                            }
-                        });
-                        this._defectIndex += 1;
-                    }
+                    success: this._onModelCreated
                 });
                 return count;
             }, this);
         } else {
             this._buildGrid();
         }
+    },
+
+    _onModelCreated: function(model) {
+        model.load(Rally.util.Ref.getOidFromRef(this._currentDefectList[this._defectIndex].get('RevisionHistory')),{
+            scope: this,
+            success: this._onModelLoaded
+        });
+        this._defectIndex += 1;
+    },
+
+    _onModelLoaded: function(record, operation) {
+        record.getCollection('Revisions').load({
+            fetch: true,
+            scope: this,
+            callback: function(revisions, operation, success) {
+                this._onRevisionsLoaded(revisions, record);
+            }
+        }); 
+    },
+
+    _onRevisionsLoaded: function(revisions, record) {
+        Ext.Array.each(revisions, function(revision, revisionIndex) {
+            if (revision.data.Description.search("CLOSED DATE added") !== -1) {
+                Ext.Array.each(this._customRecords, function(customDefect) {
+                    if (customDefect.RevisionID === record.internalId) {
+                        customDefect.RevisionNumber = revision.get('RevisionNumber');
+                        customDefect.DateClosed = revision.get('CreationDate');
+                        customDefect.ClosedBy = revision.get('User')._refObjectName;
+                        return false;
+                    }
+                }, this);
+                return false;
+            } else if (revisionIndex === (revisions.length-1)) {
+                Ext.Array.each(this._customRecords, function(customDefect) {
+                    if (customDefect && (customDefect.RevisionID === record.internalId)) {
+                        Ext.Array.remove(this._customRecords, customDefect);
+                    }
+                }, this);
+            }
+        }, this);
+        this._buildGrid();
     },
 
     _buildGrid: function() {
@@ -167,12 +175,9 @@ Ext.define('CustomApp', {
 
         var doc = printWindow.document;
 
-
         var grid = this.down('#grid');
 
         doc.write('<html><head>' + '<style>' + css + '</style><title>' + title + '</title>');
-
-
         doc.write('</head><body class="landscape">');
         doc.write('<p>Release: ' + title + '</p><br />');
         doc.write(grid.getEl().dom.innerHTML);
@@ -215,6 +220,5 @@ Ext.define('CustomApp', {
                 type: 'text/css'
             }, printWindow.document.getElementsByTagName('head')[0], printWindow);
         }, this);
-
     }
 });
