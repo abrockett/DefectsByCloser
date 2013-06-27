@@ -51,67 +51,82 @@ Ext.define('CustomApp', {
                 scope: this
             }
         });
-
-        //Rally.data.ModelFactory.getModel({
-        //    type: 'Defect',
-        //    success: this._onModelRetrieved,
-        //    scope: this
-        //});
     },
 
     _onDefectDataLoaded: function(store, data) {
-        var me = this;
         this._customRecords = [];
-        if (data.length === 0) {
-            //this._onDefectDataBuilt([],0);
-        }
-        Ext.Array.each(data, function(defect) {
-            //this._defectRecords.push(defect);
-            //console.log('id: ' + Rally.util.Ref.getOidFromRef(defect.get('RevisionHistory')))
+        Ext.Array.each(data, function(defect, index) {
             this._customRecords.push({
+                _ref: defect.get('_ref'),
                 FormattedID: defect.get('FormattedID'),
                 Name: defect.get('Name'),
-                Owner: defect.get('Owner').DisplayName,
+                ClosedBy: 'not loaded',
+                DateClosed: 'not loaded',
                 RevisionID: Rally.util.Ref.getOidFromRef(defect.get('RevisionHistory')),
-                RevisionNumber: ''
+                RevisionNumber: 'not loaded'
             });
         }, this);
 
-        this._getRevisionHistory(data)
+        this._getRevisionHistory(data);
     },
 
     _getRevisionHistory: function(defectList) {
-        //debugger;
-        //console.log('defect outside function: ' + defect.internalId);
         this._currentDefectList = Ext.clone(defectList);
         this._defectIndex = 0;
         var me = this, count;
-        //debugger;
         if (defectList.length > 0) {
             Ext.Array.each(defectList, function(defect) {
-                //this._currentDefect = defect;
                 this._revisionModel = Rally.data.ModelFactory.getModel({
                     type: 'RevisionHistory',
                     scope: this,
                     success: function(model) {
-                        //debugger;
-                        //console.log('defect that revisions are taken from: ' + this._currentDefect.internalId);
                         model.load(Rally.util.Ref.getOidFromRef(this._currentDefectList[this._defectIndex].get('RevisionHistory')),{
                             scope: this,
                             success: function(record, operation) {
-                                console.log('count received: ' + record.get('Revisions').Count + 
-                                    ' for id: ' + record.internalId + '; index: ' + this._defectIndex + '; defect: ' + 
-                                    this._currentDefectList[this._defectIndex]
-                                );
-                                debugger;
-                                Ext.Array.each(this._customRecords, function(defect) {
-                                    if (record.internalId === defect.RevisionID) {
-                                        defect.RevisionNumber = record.get('Revisions').Count;
+                                record.getCollection('Revisions').load({
+                                    fetch: true,
+                                    scope: this,
+                                    callback: function(revisions, operation, success) {
+                                        //debugger;
+                                        Ext.Array.each(revisions, function(revision, revisionIndex) {
+                                            //debugger;
+                                            if (revision.data.Description.search("CLOSED DATE added") !== -1) {
+                                                console.log('revision hit');
+                                                Ext.Array.each(this._customRecords, function(customDefect) {
+                                                    //debugger;
+                                                    if (customDefect.RevisionID === record.internalId) {
+                                                        customDefect.RevisionNumber = revision.get('RevisionNumber');
+                                                        customDefect.DateClosed = revision.get('CreationDate');
+                                                        customDefect.ClosedBy = revision.get('User')._refObjectName;
+                                                        //debugger;
+                                                        //console.log('data loaded: ', defect, record);
+                                                        return false;
+
+                                                    }
+                                                }, this);
+                                                return false;
+                                            } else {
+                                                if (revisionIndex === (revisions.length-1) ) {
+                                                    Ext.Array.each(this._customRecords, function(customDefect) {
+                                                        console.log('revision hit');
+                                                        //debugger;
+                                                        if (customDefect.RevisionID === record.internalId) {
+                                                            customDefect.RevisionNumber = revision.get('RevisionNumber');
+                                                            customDefect.DateClosed = revision.get('CreationDate');
+                                                            customDefect.ClosedBy = revision.get('User')._refObjectName;
+                                                            //debugger;
+                                                            //console.log('data loaded: ', defect, record);
+                                                            return false;
+
+                                                        }
+                                                    }, this);
+                                                }
+                                            }
+                                            //console.log('building grid!');
+                                            this._buildGrid();
+                                        }, this);
                                     }
-                                })
-                                //count = record.get('Revisions').Count;
-                                //return record.get('Revisions').Count;
-                                this._buildGrid();
+                                }); 
                             }
                         });
                         this._defectIndex += 1;
@@ -119,82 +134,34 @@ Ext.define('CustomApp', {
                 });
                 return count;
             }, this);
+        } else {
+            this._buildGrid();
         }
-
-        //me._revisionModel.load(Rally.util.Ref.getOidFromRef(this._currentRecord.get('RevisionHistory')),{
-        //    scope: this,
-        //    success: function(record, operation) {
-        //        debugger;
-        //    }
-        //});
-    
     },
 
     _buildGrid: function() {
-        this.grid
+        var customStore = Ext.create('Rally.data.custom.Store', {
+            data: this._customRecords,
+            pageSize: this._customRecords.length
+        });
+
+        if (!this.grid) {
+            this.grid = this.down('#grid').add({
+                xtype: 'rallygrid',
+                store: customStore,
+                sortableColumns: false,
+                showPagingToolbar: false,
+                columnCfgs: [
+                    {text: 'Formatted ID', dataIndex: 'FormattedID', flex: 1, xtype: 'templatecolumn', 
+                        tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate')},
+                    {text: 'Name', dataIndex: 'Name', flex: 2},
+                    {text: 'Date Closed', dataIndex: 'DateClosed', flex: 2},
+                    {text: 'Revision Number', dataIndex: 'RevisionNumber', flex: 1},
+                    {text: 'Closed By', dataIndex: 'ClosedBy', flex: 1}
+                ]
+            });
+        } else {
+            this.grid.reconfigure(customStore);
+        }
     }
-
-    //_onModelRetrieved: function(model) {
-    //    var me = this;
-    //    this.grid = this.add({
-    //        xtype: 'rallygrid',
-    //        model: model,
-    //        columnCfgs: [
-    //            {text: 'Formatted ID', dataIndex: 'FormattedID', flex: 1},
-    //            {text: 'Name', dataIndex: 'Name', flex: 2},
-    //            {text: 'Revision Number', dataIndex: 'Summary', flex: 1,  renderer: function(value, metaData, record) {
-    //                var number = 7;
-    //                //var revision_history = me._getRevisionHistory(record);
-    //                //debugger;
-    //                me._currentRecord = Ext.clone(record);
-    //                number = me._getRevisionHistory();
-    //                
-    //
-    //                //var recordStore = record.getCollection('RevisionHistory',{
-    //                //    fetch: ['Revisions'],
-    //                //    autoLoad: true,
-    //                //    callback: function(revisions, operation, success) {
-    //                //        debugger;
-    //                //        number = revisions.length;
-    //                //    }
-    //                //});
-    //                return number;
-    //            }}
-    //        ],
-    //        storeConfig: {
-    //            listeners: {
-    //                load: this._onDefectsLoaded,
-    //                scope: this
-    //            },
-    //            fetch: [
-    //                'FormattedID',
-    //                'Name',
-    //                'RevisionHistory',
-    //                'Owner',
-    //                'DisplayName',
-    //                'UserName'
-    //            ],
-    //            context: this.context.getDataContext(),
-    //            filters: [
-    //                {
-    //                    property: 'Release',
-    //                    operator: '=',
-    //                    value: this.down('#releaseComboBox').getValue()
-    //                }
-    //            ]
-    //        },
-    //        
-    //        showPagingToolbar: false
-    //    });
-    //},
-
-    
-    //_onRevisionHistoryLoaded: function(store, data) {
-    //    
-    //    debugger;
-    //},
-
-    //_onDefectsLoaded: function(store, records){
-    //    console.log('Empty Grid... WOot');
-    //}
 });
