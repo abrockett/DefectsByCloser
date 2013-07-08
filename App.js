@@ -147,7 +147,13 @@ Ext.define('Rally.apps.defectsbycloser.App', {
         // code to get the style that we added in the app.css file
         var css = document.getElementsByTagName('style')[0].innerHTML;
 
-        var printWindow = window.open('', '', options);
+        var printWindow;
+
+        if (Ext.isIE) {
+            printWindow = window.open();
+        } else {
+            printWindow = window.open('', title, options);
+        }
 
         var doc = printWindow.document;
 
