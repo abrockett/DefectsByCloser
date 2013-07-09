@@ -2,6 +2,11 @@ Ext.define('Rally.apps.defectsbycloser.App', {
     extend: 'Rally.app.TimeboxScopedApp',
     componentCls: 'app',
     scopeType: 'release',
+    comboboxConfig: {
+        fieldLabel: 'Select a Release:',
+        labelWidth: 100,
+        width: 300
+    },
 
     addContent: function() {
         this.add({
