@@ -168,12 +168,19 @@ Ext.define('Rally.apps.defectsbycloser.App', {
         doc.write('</head><body class="landscape">');
         doc.write('<p style="font-family:Arial,Helvetica,sans-serif;margin:5px">Release: ' + title + '</p><br />');
         doc.write(grid.getEl().dom.innerHTML);
-        doc.write('</body></html>');
+        doc.write('</body>');
+        doc.write('</html>');
         doc.close();
 
         this._injectCSS(printWindow);
 
-        printWindow.print();
+        if (Ext.isSafari) {
+            var timeout = setTimeout(function() {
+                printWindow.print();
+            }, 500);
+        } else {
+            printWindow.print();
+        }
 
     },
 
