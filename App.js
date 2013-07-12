@@ -60,15 +60,15 @@ Ext.define('Rally.apps.defectsbycloser.App', {
             Rally.data.ModelFactory.getModel({
                 type: 'RevisionHistory',
                 scope: this,
-                success: function(model) {
-                    this._onModelLoaded(model);
-                }
+                success: this._onModelLoaded
             });
         } else {
             this._buildGrid();
         }
     },
 
+    // looping through the defects and loading their Revision Histories
+    // pass defect through to _onRevisionHistoryLoaded so we don't have to match defect id's later
     _onModelLoaded: function(model) {
         Ext.Array.each(this._customRecords, function(defect, index) {
             model.load(Rally.util.Ref.getOidFromRef(defect.RevisionHistory), {
@@ -80,6 +80,7 @@ Ext.define('Rally.apps.defectsbycloser.App', {
         }, this);
     },
 
+    // grabbing the revisions for each defect
     _onRevisionHistoryLoaded: function(defect, record) {
         record.getCollection('Revisions').load({
             fetch: ['RevisionNumber', 'CreationDate', 'User', 'Description'],
@@ -90,6 +91,7 @@ Ext.define('Rally.apps.defectsbycloser.App', {
         }); 
     },
 
+    // fills defect with remaining data.  also ensures _buildGrid is only called ONCE
     _onRevisionsLoaded: function(revisions, defect) {
         Ext.Array.each(revisions, function(revision, revisionIndex) {
             if (revision.get('Description').search("CLOSED DATE added") !== -1) {
